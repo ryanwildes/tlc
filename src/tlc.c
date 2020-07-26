@@ -7,14 +7,14 @@
 
 typedef struct tlc_context
 {
-    TCCState *s;
+    TCCState *state;
 } tlc_context;
 
 static int tlc_new(lua_State *L)
 {
-    tlc_context *c = lua_newuserdata(L, sizeof(tlc_context));
-    c->s = tcc_new();
-    if (!c->s) {
+    tlc_context *ctx = lua_newuserdata(L, sizeof(tlc_context));
+    ctx->state = tcc_new();
+    if (!ctx->state) {
         lua_pushliteral(L, "couldn't create new context");
         return lua_error(L);
     }
@@ -25,23 +25,23 @@ static int tlc_new(lua_State *L)
 
 static int tlc_delete(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
-    if (c->s == NULL) {
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
+    if (ctx->state == NULL) {
         lua_pushliteral(L, "attempted to close already deleted context");
         return lua_error(L);
     }
-    tcc_delete(c->s);
-    c->s = NULL;
+    tcc_delete(ctx->state);
+    ctx->state = NULL;
     lua_pushboolean(L, 1);
     return 1;
 }
 
 static int tlc_setlibpath(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *path = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        tcc_set_lib_path(c->s, path);
+    if (ctx->state != NULL) {
+        tcc_set_lib_path(ctx->state, path);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -53,10 +53,10 @@ static int tlc_setlibpath(lua_State *L)
 
 static int tlc_setoptions(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *opts = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        tcc_set_options(c->s, opts);
+    if (ctx->state != NULL) {
+        tcc_set_options(ctx->state, opts);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -66,10 +66,10 @@ static int tlc_setoptions(lua_State *L)
 
 static int tlc_addincludepath(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *path = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        tcc_add_include_path(c->s, path);
+    if (ctx->state != NULL) {
+        tcc_add_include_path(ctx->state, path);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -79,10 +79,10 @@ static int tlc_addincludepath(lua_State *L)
 
 static int tlc_addsysincludepath(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *path = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        tcc_add_sysinclude_path(c->s, path);
+    if (ctx->state != NULL) {
+        tcc_add_sysinclude_path(ctx->state, path);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -92,11 +92,11 @@ static int tlc_addsysincludepath(lua_State *L)
 
 static int tlc_defsymbol(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *symbol = luaL_checkstring(L, 2);
     const char *value = luaL_tolstring(L, 3, NULL);
-    if (c->s != NULL) {
-        tcc_define_symbol(c->s, symbol, value);
+    if (ctx->state != NULL) {
+        tcc_define_symbol(ctx->state, symbol, value);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -106,10 +106,10 @@ static int tlc_defsymbol(lua_State *L)
 
 static int tlc_undefsymbol(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *symbol = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        tcc_undefine_symbol(c->s, symbol);
+    if (ctx->state != NULL) {
+        tcc_undefine_symbol(ctx->state, symbol);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -119,10 +119,10 @@ static int tlc_undefsymbol(lua_State *L)
 
 static int tlc_addfile(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *file = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        if (tcc_add_file(c->s, file) == -1) {
+    if (ctx->state != NULL) {
+        if (tcc_add_file(ctx->state, file) == -1) {
             lua_pushliteral(L, "error adding file to context");
             return lua_error(L);
         }
@@ -135,10 +135,10 @@ static int tlc_addfile(lua_State *L)
 
 static int tlc_compilestring(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     const char *str = luaL_checkstring(L, 2);
-    if (c->s != NULL) {
-        if (tcc_compile_string(c->s, str) == -1) {
+    if (ctx->state != NULL) {
+        if (tcc_compile_string(ctx->state, str) == -1) {
             lua_pushliteral(L, "error compiling string");
             return lua_error(L);
         }
@@ -151,11 +151,10 @@ static int tlc_compilestring(lua_State *L)
 
 static int tlc_setoutputtype(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
     int output = luaL_checkinteger(L, 2);
-    if (c->s != NULL)
-    {
-        tcc_set_output_type(c->s, output);
+    if (ctx->state != NULL) {
+        tcc_set_output_type(ctx->state, output);
         lua_pushboolean(L, 1);
         return 1;
     }
@@ -166,21 +165,31 @@ static int tlc_setoutputtype(lua_State *L)
 // static int tlc_addlibpath()
 // static int tlc_addlib()
 // static int tlc_addsym()
-// static int tlc_outputfile()
+
+static int tlc_outputfile(lua_State *L)
+{
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
+    const char *file = luaL_checkstring(L, 2);
+    if (ctx->state != NULL) {
+        tcc_output_file(ctx->state, file);
+        lua_pushboolean(L, 1);
+        return 1;
+    }
+    lua_pushnil(L);
+    return 1;
+}
 
 static int tlc_run(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
-    if (c->s != NULL)
-    {
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
+    if (ctx->state != NULL) {
         int argc = luaL_checkinteger(L, 2);
         char *argv[argc];
         argv[0] = "tcc";
-        for (int i = 1; i <= argc; i++)
-        {
-            argv[i] = luaL_checkstring(L, i + 2);
+        for (int i = 1; i <= argc; i++) {
+            argv[i] = (char *)luaL_checkstring(L, i + 2);
         }
-        int result = tcc_run(c->s, argc, argv);
+        int result = tcc_run(ctx->state, argc, argv);
         if (result == 0) {
             lua_pushboolean(L, 1);
             return 1;
@@ -197,12 +206,12 @@ static int tlc_run(lua_State *L)
 
 static int tlc_tostring(lua_State *L)
 {
-    tlc_context *c = luaL_checkudata(L, 1, TLC_CONTEXT);
-    if (c->s == NULL) {
+    tlc_context *ctx = luaL_checkudata(L, 1, TLC_CONTEXT);
+    if (ctx->state == NULL) {
         lua_pushfstring(L, "%s (closed)", TLC_CONTEXT);
     }
     else {
-        lua_pushfstring(L, "%s (open): %p", TLC_CONTEXT, &c->s);
+        lua_pushfstring(L, "%s (open): %p", TLC_CONTEXT, &ctx->state);
     }
     return 1;
 }
